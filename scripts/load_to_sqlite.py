@@ -1,6 +1,6 @@
 import pandas as pd
-from sqlalchemy import create_engine, text
 import os
+import sqlite3
 
 # =============================================================================
 # DATABASE CONFIGURATION
@@ -9,7 +9,7 @@ import os
 DB_NAME = "bluestock_mf.db"
 PROCESSED_PATH = "data/processed"
 
-engine = create_engine(f"sqlite:///{DB_NAME}")
+conn = sqlite3.connect(DB_NAME)
 
 print("=" * 100)
 print("LOADING CLEANED DATA INTO SQLITE")
@@ -69,12 +69,12 @@ dim_fund = fund_master.copy()
 
 dim_fund.to_sql(
     "dim_fund",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ dim_fund loaded")
+print("OK dim_fund loaded")
 
 # =============================================================================
 # DATE DIMENSION
@@ -82,15 +82,31 @@ print("✓ dim_fund loaded")
 
 date_frames = []
 
-if "date" in nav_history.columns:
-    date_frames.append(
-        pd.to_datetime(nav_history["date"])
-    )
+date_sources = [
+    (nav_history, "date"),
+    (transactions, "transaction_date"),
+    (aum, "date"),
+    (benchmark, "date"),
+    (portfolio, "portfolio_date"),
+]
 
-if "transaction_date" in transactions.columns:
-    date_frames.append(
-        pd.to_datetime(transactions["transaction_date"])
-    )
+month_sources = [
+    (sip, "month"),
+    (category, "month"),
+    (folio, "month"),
+]
+
+for frame, column in date_sources:
+    if column in frame.columns:
+        date_frames.append(
+            pd.to_datetime(frame[column], errors="coerce")
+        )
+
+for frame, column in month_sources:
+    if column in frame.columns:
+        date_frames.append(
+            pd.to_datetime(frame[column].astype(str) + "-01", errors="coerce")
+        )
 
 all_dates = pd.concat(
     [pd.Series(d) for d in date_frames],
@@ -98,8 +114,12 @@ all_dates = pd.concat(
 )
 
 dim_date = pd.DataFrame({
-    "date": all_dates.drop_duplicates()
+    "date": all_dates.dropna().drop_duplicates().sort_values()
 })
+
+dim_date["date"] = pd.to_datetime(
+    dim_date["date"]
+).dt.strftime("%Y-%m-%d")
 
 dim_date["year"] = pd.to_datetime(
     dim_date["date"]
@@ -119,12 +139,12 @@ dim_date["quarter"] = pd.to_datetime(
 
 dim_date.to_sql(
     "dim_date",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ dim_date loaded")
+print("OK dim_date loaded")
 
 # =============================================================================
 # FACT TABLES
@@ -134,84 +154,84 @@ print("\nLoading Fact Tables...")
 
 nav_history.to_sql(
     "fact_nav",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_nav loaded")
+print("OK fact_nav loaded")
 
 transactions.to_sql(
     "fact_transactions",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_transactions loaded")
+print("OK fact_transactions loaded")
 
 performance.to_sql(
     "fact_performance",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_performance loaded")
+print("OK fact_performance loaded")
 
 aum.to_sql(
     "fact_aum",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_aum loaded")
+print("OK fact_aum loaded")
 
 portfolio.to_sql(
     "fact_portfolio",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_portfolio loaded")
+print("OK fact_portfolio loaded")
 
 sip.to_sql(
     "fact_sip_inflows",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_sip_inflows loaded")
+print("OK fact_sip_inflows loaded")
 
 category.to_sql(
     "fact_category_inflows",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_category_inflows loaded")
+print("OK fact_category_inflows loaded")
 
 folio.to_sql(
     "fact_folio_count",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_folio_count loaded")
+print("OK fact_folio_count loaded")
 
 benchmark.to_sql(
     "fact_benchmark",
-    engine,
+    conn,
     if_exists="replace",
     index=False
 )
 
-print("✓ fact_benchmark loaded")
+print("OK fact_benchmark loaded")
 
 # =============================================================================
 # VERIFY ROW COUNTS
@@ -235,19 +255,12 @@ tables = [
     "fact_benchmark"
 ]
 
-with engine.connect() as conn:
+for table in tables:
+    count = conn.execute(
+        f"SELECT COUNT(*) FROM {table}"
+    ).fetchone()[0]
 
-    for table in tables:
-
-        result = conn.execute(
-            text(
-                f"SELECT COUNT(*) FROM {table}"
-            )
-        )
-
-        count = result.scalar()
-
-        print(f"{table:<25} {count}")
+    print(f"{table:<25} {count}")
 
 # =============================================================================
 # SUCCESS MESSAGE
@@ -257,3 +270,5 @@ print("\n" + "=" * 100)
 print("SQLITE DATABASE CREATED SUCCESSFULLY")
 print(f"Database File: {DB_NAME}")
 print("=" * 100)
+
+conn.close()

@@ -1,0 +1,42 @@
+{
+  "name": "Bluestock Mutual Fund Theme",
+  "dataColors": [
+    "#0B5FFF",
+    "#00AEEF",
+    "#17A673",
+    "#FF9F1C",
+    "#D64550",
+    "#083B78",
+    "#6C63FF",
+    "#7A869A"
+  ],
+  "background": "#F7FAFF",
+  "foreground": "#172033",
+  "tableAccent": "#0B5FFF",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "title": [
+          {
+            "fontColor": {
+              "solid": {
+                "color": "#172033"
+              }
+            },
+            "fontFamily": "Segoe UI"
+          }
+        ],
+        "labels": [
+          {
+            "color": {
+              "solid": {
+                "color": "#697386"
+              }
+            },
+            "fontFamily": "Segoe UI"
+          }
+        ]
+      }
+    }
+  }
+}
