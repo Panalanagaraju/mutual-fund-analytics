@@ -10,6 +10,15 @@ Today's task focused on building the performance analytics layer for all 40 mutu
 
 The final outputs are a reproducible Jupyter notebook, two CSV result files, and a benchmark comparison chart.
 
+### Generated Deliverables
+
+- `notebooks/Performance_Analytics.ipynb`
+- `data/processed/fund_scorecard.csv`
+- `data/processed/alpha_beta.csv`
+- `charts/performance/benchmark_comparison_top5.png`
+
+The notebook was executed successfully in the project environment and the metrics files were regenerated.
+
 ## Work Completed
 
 ### 1. Computed Daily Returns
